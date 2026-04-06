@@ -62,16 +62,6 @@ function goBack() {
     store.navigateTo("slots");
 }
 
-function resetPatientFormForNext() {
-    patientId.value = "";
-    patientFirstName.value = "";
-    patientLastName.value = "";
-    patientPhone.value = "";
-    pdpaConsented.value = false;
-    // ensure form becomes editable for next person
-    store.currentPatientData = null;
-}
-
 async function handleSubmit(event: Event) {
     event.preventDefault();
 
