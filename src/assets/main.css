@@ -1,0 +1,932 @@
+/* =====================================================================
+   Main CSS - ระบบจองคิวแพทย์แผนไทย Manager Portal
+   Tailwind CSS v4 + Custom Styles (รักษา UI เดิมทุกประการ)
+   ===================================================================== */
+
+@import "tailwindcss";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* ─── Tailwind v4 Custom Theme ─────────────────────────────────────── */
+@theme {
+    --color-primary: #073b4c;
+    --color-primary-light: #3e8e7e;
+    --color-secondary: #a39d87;
+    --color-app-bg: #f6f4f1;
+    --color-app-border: #dcd9d4;
+    --color-dark-text: #262626;
+    --color-status-green: #157347;
+    --color-status-yellow: #ffc107;
+    --color-status-gray: #495057;
+    --color-status-red: #c82333;
+    --color-disabled-bg: #e9ecef;
+    --color-disabled-text: #6c757d;
+
+    --font-family-prompt: "Prompt", sans-serif;
+}
+
+/* ─── CSS Custom Properties (ใช้ใน CSS rules เดิม) ───────────────── */
+:root {
+    --primary-accent: #073b4c;
+    --secondary-accent: #a39d87;
+    --background-secondary: #f6f4f1;
+    --dark-text: #262626;
+    --light-bg: #ffffff;
+    --border-color: #dcd9d4;
+    --status-green: #157347;
+    --status-yellow: #ffc107;
+    --status-gray: #495057;
+    --status-red: #c82333;
+    --status-disabled-bg: #e9ecef;
+    --status-disabled-text: #6c757d;
+}
+
+/* ─── Vue Mount Point: ทำให้ #app โปร่งใสต่อ layout
+       เพื่อให้ body (flex) center #app-container ได้ถูกต้อง ────────── */
+#app {
+    display: contents;
+}
+
+/* ─── Base / Body ────────────────────────────────────────────────── */
+body {
+    font-family: "Prompt", sans-serif;
+    background-color: #f8f9fa;
+    color: var(--dark-text);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 1.5rem 0;
+}
+
+/* ─── App Container ──────────────────────────────────────────────── */
+#app-container {
+    width: 100%;
+    max-width: 960px;
+    background-color: var(--light-bg);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+/* ─── Header ─────────────────────────────────────────────────────── */
+.app-header {
+    background: linear-gradient(135deg, var(--primary-accent), #3e8e7e);
+    color: var(--light-bg);
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+}
+.app-header h1 {
+    margin: 0;
+    font-weight: 500;
+    font-size: 1.5rem;
+}
+.app-header p {
+    margin: 5px 0 0;
+    opacity: 0.9;
+}
+.icon-header {
+    margin-right: 15px;
+    vertical-align: middle;
+}
+
+/* ─── Main Content ───────────────────────────────────────────────── */
+main#app-content {
+    padding: 2rem;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────── */
+.app-footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--background-secondary);
+    color: var(--status-gray);
+    font-size: 0.9em;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ─── Manager Mode Indicator ─────────────────────────────────────── */
+#manager-mode-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--status-yellow);
+    color: var(--dark-text);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 500;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Loading Spinner ────────────────────────────────────────────── */
+.loading-spinner {
+    text-align: center;
+    padding: 4rem;
+    font-size: 1.2rem;
+    color: var(--primary-accent);
+}
+.loading-spinner i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+/* ─── Page Title ─────────────────────────────────────────────────── */
+.page-title {
+    font-size: 1.8rem;
+    color: var(--primary-accent);
+    border-bottom: 2px solid var(--primary-accent);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+.page-title i {
+    margin-right: 15px;
+}
+
+/* ─── Filter Container ───────────────────────────────────────────── */
+.filter-container {
+    background-color: var(--background-secondary);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--primary-accent);
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-group select {
+    padding: 10px;
+    font-family: "Prompt", sans-serif;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #fff;
+    color: var(--dark-text);
+}
+.filter-group select:disabled {
+    background-color: var(--status-disabled-bg);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.filter-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-actions .btn-reset {
+    background-color: transparent;
+    color: var(--status-gray);
+    font-size: 0.9em;
+    text-decoration: underline;
+    border: none;
+    cursor: pointer;
+}
+.filter-actions .btn-reset:hover {
+    color: var(--dark-text);
+}
+
+.filter-actions .btn-search-filter {
+    padding: 10px 20px;
+    font-size: 1rem;
+}
+.filter-actions .btn-search-filter i {
+    margin-right: 8px;
+}
+
+/* ─── Home / Dashboard Action Buttons ───────────────────────────── */
+.home-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+    .home-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+}
+
+.btn-home-action {
+    border: 2px solid var(--primary-accent);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.5s ease;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    text-decoration: none;
+}
+
+.btn-home-action .action-icon {
+    font-size: 2.25rem;
+    width: 50px;
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+.btn-home-action .action-text span {
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: block;
+    line-height: 1.3;
+}
+
+.btn-home-action .action-text small {
+    font-size: 0.9rem;
+    font-weight: 300;
+    opacity: 0.9;
+}
+
+.btn-home-action:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(44, 107, 97, 0.2);
+}
+
+.btn-home-action--outline {
+    background-color: var(--light-bg);
+    color: var(--primary-accent);
+}
+
+.btn-home-action--outline .action-icon {
+    color: var(--primary-accent);
+}
+
+.btn-home-action--outline:hover {
+    background-color: var(--primary-accent);
+    color: var(--light-bg);
+}
+
+.btn-home-action--outline:hover .action-icon {
+    color: var(--light-bg);
+}
+
+/* ─── Stats Bar ──────────────────────────────────────────────────── */
+.subtle-stats-bar {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--status-gray);
+}
+.subtle-stats-bar .stat-group {
+    display: inline-block;
+}
+.subtle-stats-bar .stat-divider {
+    margin: 0 1rem;
+    color: #ccc;
+}
+.subtle-stats-bar .stat-number {
+    font-weight: 600;
+    color: var(--dark-text);
+    margin-left: 0.3rem;
+}
+.subtle-stats-bar i {
+    color: var(--primary-accent);
+    margin-right: 4px;
+}
+.subtle-stats-bar .loading-text {
+    font-style: italic;
+}
+
+@media (max-width: 600px) {
+    .subtle-stats-bar .stat-group {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .subtle-stats-bar .stat-divider {
+        display: none;
+    }
+}
+
+/* ─── Pre-check / Cancellation Search Views ──────────────────────── */
+#cancellation-search-view,
+#pre-check-view {
+    max-width: 600px;
+    margin: 2rem auto;
+    text-align: center;
+}
+#cancellation-search-form .form-group,
+#pre-check-form .form-group {
+    text-align: left;
+    margin-bottom: 1rem;
+}
+#cancellation-search-form input,
+#pre-check-form input {
+    text-align: center;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    background-color: var(--background-secondary);
+    color: var(--dark-text);
+}
+
+/* ─── Calendar ───────────────────────────────────────────────────── */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+.calendar-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--primary-accent);
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+.day-name {
+    font-weight: 500;
+    text-align: center;
+    padding: 0.5rem;
+    color: var(--primary-accent);
+}
+.calendar-day {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 60px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+.calendar-day.date-available:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 15px rgba(40, 167, 69, 0.25);
+    filter: brightness(110%);
+}
+.date-available {
+    background-color: var(--status-green);
+    color: white;
+}
+.date-full {
+    background-color: var(--status-red);
+    color: white;
+    cursor: not-allowed;
+}
+.date-holiday,
+.date-disabled {
+    background-color: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
+    cursor: not-allowed;
+}
+
+.calendar-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+}
+.legend-color {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    margin-right: 8px;
+}
+
+/* ─── Slots Table ────────────────────────────────────────────────── */
+.slots-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+}
+.slots-table th,
+.slots-table td {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+.slots-table thead th {
+    background-color: var(--primary-accent);
+    color: white;
+    font-weight: 500;
+}
+.slots-table tbody tr:nth-child(even) {
+    background-color: var(--background-secondary);
+}
+.slots-table td {
+    color: var(--dark-text);
+}
+
+/* ─── Booking Summary ────────────────────────────────────────────── */
+.booking-summary {
+    background-color: var(--background-secondary);
+    border-left: 5px solid var(--primary-accent);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+}
+.summary-item {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--dark-text);
+}
+.summary-item strong {
+    color: var(--primary-accent);
+}
+.summary-item i {
+    color: var(--primary-accent);
+    margin-right: 8px;
+    width: 20px;
+}
+
+/* ─── Form Groups ────────────────────────────────────────────────── */
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--primary-accent);
+}
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: "Prompt", sans-serif;
+    box-sizing: border-box;
+    color: var(--dark-text);
+    background-color: #fff;
+}
+.form-group input:read-only {
+    background-color: var(--status-disabled-bg);
+    cursor: not-allowed;
+}
+
+/* ─── PDPA Consent ───────────────────────────────────────────────── */
+.pdpa-consent-container {
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: var(--background-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9em;
+    line-height: 1.6;
+    color: var(--dark-text);
+}
+.pdpa-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+.pdpa-checkbox-group input[type="checkbox"] {
+    width: 1.25em;
+    height: 1.25em;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--primary-accent);
+}
+.pdpa-text a {
+    color: var(--primary-accent);
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: "Prompt", sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    background-color: var(--primary-accent);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn:hover:not(:disabled) {
+    filter: brightness(115%);
+    transform: translateY(-2px);
+}
+.btn:disabled {
+    background-color: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
+    opacity: 1;
+    cursor: not-allowed;
+}
+.btn:disabled:hover {
+    background-color: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
+    opacity: 1;
+    transform: translateY(0);
+    filter: none;
+}
+.btn-book {
+    background-color: var(--status-green);
+    color: white;
+}
+.btn-full {
+    background-color: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
+    border: 1px solid #ddd;
+}
+.btn-slot {
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 0.9em;
+}
+.btn-secondary {
+    background-color: var(--status-gray);
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #5a6268;
+    filter: brightness(100%);
+}
+
+.btn-action-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.print-all-container {
+    text-align: right;
+    margin-bottom: 1rem;
+}
+
+/* ─── Login Button Container ─────────────────────────────────────── */
+.login-button-container {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+/* ─── Manager Specific Styles ────────────────────────────────────── */
+.manager-dashboard .home-actions {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.form-container {
+    max-width: 600px;
+    margin: 1rem auto;
+    padding: 2rem;
+    background-color: var(--background-secondary);
+    border-radius: 12px;
+}
+
+.edit-patient-result {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #fff;
+}
+.edit-patient-result .form-group input:read-only {
+    font-weight: bold;
+    color: var(--primary-accent);
+    background-color: #fff;
+    border-color: transparent;
+    padding-left: 0;
+}
+
+/* ─── PDPA Modal ─────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+.modal-content {
+    background-color: #fff;
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+.modal-header h2 {
+    margin: 0;
+    color: var(--primary-accent);
+    font-size: 1.4rem;
+}
+.modal-close-btn {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: 0;
+}
+.modal-close-btn:hover {
+    color: var(--dark-text);
+}
+.modal-body h4 {
+    color: var(--primary-accent);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+.modal-body p {
+    margin: 0.5rem 0;
+    line-height: 1.7;
+}
+.modal-body ul {
+    padding-left: 20px;
+    line-height: 1.8;
+    margin: 0.5rem 0;
+}
+
+/* ─── Vue Transition ─────────────────────────────────────────────── */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+/* ─── Responsive (Mobile) ────────────────────────────────────────── */
+@media (max-width: 768px) {
+    body {
+        padding: 0;
+        background-color: var(--light-bg);
+    }
+    #app-container {
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100vh;
+        border: none;
+    }
+    .app-header {
+        padding: 1.5rem 1rem;
+    }
+    main#app-content {
+        padding: 1.5rem 1rem;
+    }
+    .page-title {
+        font-size: 1.4rem;
+    }
+    .calendar-day {
+        height: 45px;
+    }
+
+    /* Responsive table → card style */
+    .slots-table,
+    .slots-table thead,
+    .slots-table tbody,
+    .slots-table th,
+    .slots-table td,
+    .slots-table tr {
+        display: block;
+    }
+
+    .slots-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    .slots-table tr {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+    }
+    .slots-table td {
+        border: none;
+        border-bottom: 1px solid #f0f0f0;
+        position: relative;
+        padding: 12px 10px 12px 45%;
+        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .slots-table tr td:last-child {
+        border-bottom: none;
+    }
+    .slots-table td:before {
+        position: absolute;
+        top: 50%;
+        left: 15px;
+        transform: translateY(-50%);
+        width: auto;
+        padding-right: 10px;
+        white-space: nowrap;
+        content: attr(data-label);
+        font-weight: bold;
+        color: var(--primary-accent);
+        text-align: left;
+    }
+    .btn-action-group {
+        flex-direction: column-reverse;
+        gap: 12px;
+    }
+    .btn-action-group .btn {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* ─── Print Styles ───────────────────────────────────────────────── */
+@media print {
+    @page {
+        size: A5 portrait;
+        margin: 0;
+    }
+
+    /* ซ่อนทุกอย่างใน body ยกเว้น print container */
+    body > * {
+        display: none !important;
+    }
+    body > #appointment-slip-print-container {
+        display: block !important;
+    }
+
+    /* Reset Tailwind ที่อาจกระทบการพิมพ์ */
+    #appointment-slip-print-container * {
+        box-sizing: border-box;
+    }
+    #appointment-slip-print-container h1,
+    #appointment-slip-print-container h2,
+    #appointment-slip-print-container h3,
+    #appointment-slip-print-container h4 {
+        font-size: revert;
+        font-weight: revert;
+        margin: revert;
+    }
+    #appointment-slip-print-container p {
+        margin: revert;
+    }
+    #appointment-slip-print-container table {
+        border-collapse: collapse;
+    }
+
+    /* Print container wrapper */
+    #appointment-slip-print-container {
+        font-family: "Sarabun", "Prompt", sans-serif;
+        color: #000;
+        background: white;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Slip layout */
+    .slip-container {
+        border: 1px solid #333;
+        box-sizing: border-box;
+        padding: 1.5cm;
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        min-height: 100vh;
+        box-shadow: none;
+        page-break-inside: avoid;
+        background: white;
+        font-family: "Sarabun", "Prompt", sans-serif;
+        color: #000;
+    }
+
+    .slip-header {
+        text-align: center;
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5cm;
+        margin: 0 0 0.8cm 0;
+        flex-shrink: 0;
+    }
+    .slip-header h2 {
+        font-size: 16pt !important;
+        margin: 0 !important;
+        font-weight: 700 !important;
+        color: #000;
+    }
+    .slip-header p {
+        font-size: 11pt !important;
+        margin: 5px 0 0 !important;
+        color: #000;
+    }
+
+    .slip-section {
+        margin: 0 0 0.8cm 0;
+    }
+    .slip-section.slip-section-main {
+        flex-grow: 1;
+    }
+    .slip-section h3 {
+        font-size: 13pt !important;
+        font-weight: bold !important;
+        margin: 0 0 8px 0 !important;
+        color: #000;
+    }
+    .slip-section p {
+        font-size: 13pt !important;
+        line-height: 1.6 !important;
+        margin: 6px 0 !important;
+        color: #000;
+    }
+    .slip-section strong {
+        font-weight: bold !important;
+    }
+
+    .slip-footer {
+        margin-top: auto;
+        text-align: center;
+        font-size: 9pt;
+        padding-top: 0.5cm;
+        border-top: 1px solid #ccc;
+        line-height: 1.4;
+        flex-shrink: 0;
+        color: #000;
+    }
+    .slip-footer p {
+        font-size: 9pt !important;
+        margin: 4px 0 !important;
+        color: #000;
+    }
+
+    .slip-table {
+        width: 100%;
+        border-collapse: collapse !important;
+        margin-top: 8px;
+        page-break-inside: auto;
+    }
+    .slip-table thead {
+        display: table-header-group;
+    }
+    .slip-table tr {
+        page-break-inside: avoid;
+    }
+    .slip-table th,
+    .slip-table td {
+        border: 1px solid #999 !important;
+        padding: 8px !important;
+        font-size: 10pt !important;
+        text-align: left !important;
+        color: #000;
+        background: none;
+        display: table-cell;
+    }
+    .slip-table th {
+        background-color: #f2f2f2 !important;
+        font-weight: bold !important;
+    }
+}
