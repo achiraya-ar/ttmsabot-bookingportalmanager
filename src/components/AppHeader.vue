@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   isManagerLoggedIn: boolean
+  userName?: string | null
 }>()
 </script>
 
@@ -8,6 +9,7 @@ defineProps<{
   <header class="app-header">
     <div v-if="isManagerLoggedIn" id="manager-mode-indicator">
       <i class="fa-solid fa-user-shield"></i> โหมดผู้จัดการ
+      <span v-if="userName"> · {{ userName }}</span>
     </div>
     <h1>
       <i class="fa-solid fa-spa icon-header"></i>

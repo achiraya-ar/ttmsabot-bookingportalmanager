@@ -2,6 +2,18 @@
 //  Types & Interfaces สำหรับระบบจองคิวแพทย์แผนไทย - Manager Portal
 // =====================================================================
 
+// --- ผู้ใช้ที่เข้าสู่ระบบ (ตาราง profiles) ---
+export interface UserProfile {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  username: string
+  can_access_personalworkschedule: boolean
+  can_access_workschedule: boolean
+  can_access_bookingportalmanager: boolean
+}
+
 // --- ข้อมูลผู้ป่วย ---
 export interface Patient {
   patient_id: string
@@ -43,7 +55,7 @@ export interface Filters {
   timeSlot?: string
 }
 
-// --- ตัวเลือก Filter (โหลดจาก schedules) ---
+// --- ตัวเลือก Filter (โหลดจาก schedule_versions) ---
 export interface FilterOptions {
   therapists: string[]
   timeSlots: string[]

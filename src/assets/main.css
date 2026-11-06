@@ -329,27 +329,6 @@ main#app-content {
     }
 }
 
-/* ─── Pre-check / Cancellation Search Views ──────────────────────── */
-#cancellation-search-view,
-#pre-check-view {
-    max-width: 600px;
-    margin: 2rem auto;
-    text-align: center;
-}
-#cancellation-search-form .form-group,
-#pre-check-form .form-group {
-    text-align: left;
-    margin-bottom: 1rem;
-}
-#cancellation-search-form input,
-#pre-check-form input {
-    text-align: center;
-    font-size: 1.2rem;
-    letter-spacing: 2px;
-    background-color: var(--background-secondary);
-    color: var(--dark-text);
-}
-
 /* ─── Calendar ───────────────────────────────────────────────────── */
 .calendar-header {
     display: flex;
@@ -494,6 +473,15 @@ main#app-content {
 .form-group input:read-only {
     background-color: var(--status-disabled-bg);
     cursor: not-allowed;
+}
+.patient-data-note {
+    margin: -0.5rem 0 1rem;
+    font-size: 0.85rem;
+    color: var(--status-gray);
+}
+.patient-data-note i {
+    margin-right: 6px;
+    color: var(--primary-accent);
 }
 
 /* ─── PDPA Consent ───────────────────────────────────────────────── */
@@ -693,6 +681,55 @@ main#app-content {
     padding-left: 20px;
     line-height: 1.8;
     margin: 0.5rem 0;
+}
+
+/* ─── Patient print picker ───────────────────────────────────────── */
+.print-patient-list {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+
+.print-patient-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--background-secondary);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.print-patient-option:hover {
+    border-color: var(--primary-accent);
+    background-color: #fff;
+}
+
+.print-patient-option input[type="radio"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+    accent-color: var(--primary-accent);
+    cursor: pointer;
+}
+
+.print-patient-option strong {
+    display: block;
+    color: var(--dark-text);
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.print-patient-option small {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--status-gray);
+    font-size: 0.82em;
+    line-height: 1.5;
 }
 
 /* ─── Vue Transition ─────────────────────────────────────────────── */

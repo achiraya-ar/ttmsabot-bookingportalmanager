@@ -25,6 +25,10 @@ dist-ssr/
 # Keep example env files
 .env.example
 
+# Keep a template and Vite env meta file tracked in the repo
+!.env.example
+!.env.meta
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

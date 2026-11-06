@@ -30,7 +30,9 @@ onMounted(async () => {
     }
 });
 
-function handleLogout() {
+async function handleLogout() {
+    await store.logout();
+    store.navigateTo("login");
     Swal.fire({
         icon: "info",
         title: "ออกจากระบบ",
@@ -38,8 +40,6 @@ function handleLogout() {
         timer: 1500,
         showConfirmButton: false,
     });
-    store.logout();
-    store.navigateTo("login");
 }
 
 function goToNewBooking() {

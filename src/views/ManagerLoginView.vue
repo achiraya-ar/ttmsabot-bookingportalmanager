@@ -2,42 +2,37 @@
 import { ref } from 'vue'
 import Swal from 'sweetalert2'
 import { useAppStore } from '@/stores/appStore'
-import { getManagerPassword } from '@/services/api'
+import { loginWithUsername } from '@/services/auth'
 
 const store = useAppStore()
+const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
 
 async function handleLogin(event: Event) {
   event.preventDefault()
-  if (!password.value) {
-    Swal.fire('ผิดพลาด', 'กรุณากรอกรหัสผ่าน', 'warning')
+  if (!username.value.trim() || !password.value) {
+    Swal.fire('ผิดพลาด', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'warning')
     return
   }
 
   isLoading.value = true
   try {
-    const { data, error } = await getManagerPassword()
-    if (error) throw error
-    if (!data) throw new Error('ไม่พบการตั้งค่ารหัสผ่าน')
+    const profile = await loginWithUsername(username.value, password.value)
+    store.login(profile)
 
-    if (password.value === data.setting_value) {
-      store.login()
-      await Swal.fire({
-        icon: 'success',
-        title: 'สำเร็จ!',
-        text: 'เข้าสู่โหมดผู้จัดการแล้ว',
-        timer: 1500,
-        showConfirmButton: false,
-      })
-      store.navigateTo('dashboard')
-    } else {
-      await Swal.fire('ผิดพลาด', 'รหัสผ่านไม่ถูกต้อง', 'error')
-      password.value = ''
-    }
+    await Swal.fire({
+      icon: 'success',
+      title: 'สำเร็จ!',
+      text: `ยินดีต้อนรับ ${profile.full_name}`,
+      timer: 1500,
+      showConfirmButton: false,
+    })
+    store.navigateTo('dashboard')
   } catch (err) {
     const e = err as Error
-    Swal.fire('เกิดข้อผิดพลาด', `ระบบขัดข้อง: ${e.message || ''}`, 'error')
+    await Swal.fire('เข้าสู่ระบบไม่สำเร็จ', e.message || 'เกิดข้อผิดพลาด', 'error')
+    password.value = ''
   } finally {
     isLoading.value = false
   }
@@ -52,13 +47,28 @@ async function handleLogin(event: Event) {
 
     <form id="manager-login-form" novalidate @submit="handleLogin">
       <div class="form-group">
-        <label for="passwordInput">กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ</label>
+        <label for="usernameInput">ชื่อผู้ใช้</label>
+        <input
+          id="usernameInput"
+          v-model="username"
+          type="text"
+          required
+          autocomplete="username"
+          autocapitalize="none"
+          placeholder="กรอกชื่อผู้ใช้"
+          :disabled="isLoading"
+        />
+      </div>
+
+      <div class="form-group" style="margin-top: 1rem;">
+        <label for="passwordInput">รหัสผ่าน</label>
         <input
           id="passwordInput"
           v-model="password"
           type="password"
           required
           autocomplete="current-password"
+          placeholder="กรอกรหัสผ่าน"
           :disabled="isLoading"
         />
       </div>

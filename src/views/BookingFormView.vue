@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import Swal from "sweetalert2";
 import { useAppStore } from "@/stores/appStore";
-import { processBooking, registerNewPatient } from "@/services/api";
+import { processBooking, updatePatientData, updateBookingPatientData } from "@/services/api";
 import { formatThaiDate } from "@/utils/dateUtils";
 import { createPrintSlip } from "@/utils/printUtils";
 import type { BookingInfo } from "@/types";
@@ -26,12 +26,6 @@ if (!store.remainingToBook || store.remainingToBook < 1) {
 }
 
 // ─── Computed ──────────────────────────────────────────────────────────
-const isNewPatient = computed(
-    () =>
-        !store.currentPatientData?.first_name &&
-        !store.currentPatientData?.last_name,
-);
-
 const isRegisteredPatient = computed(
     () => !!store.currentPatientData?.first_name,
 );
@@ -93,15 +87,41 @@ async function handleSubmit(event: Event) {
     });
 
     try {
-        // ถ้าเป็นผู้ป่วยใหม่ที่ยังไม่มีในระบบ → ลงทะเบียนก่อน
-        if (isNewPatient.value) {
-            const { error: regError } = await registerNewPatient({
-                patient_id: patientId.value,
-                first_name: patientFirstName.value,
-                last_name: patientLastName.value,
-                phone_number: patientPhone.value,
-            });
-            if (regError) throw regError;
+        const trimmedFirstName = patientFirstName.value.trim();
+        const trimmedLastName = patientLastName.value.trim();
+        const trimmedPhone = patientPhone.value.trim();
+
+        // อัปเดตข้อมูลผู้ป่วยล่าสุดเมื่อมีการแก้ไข:
+        // - ผู้ป่วยที่ลงทะเบียนแล้ว → อัปเดตข้อมูลในทะเบียนผู้ป่วย
+        // - รายการจองเดิมทั้งหมด → อัปเดตชื่อ/เบอร์โทรให้ตรงกับข้อมูลล่าสุด
+        // - ผู้ป่วยที่ยังไม่ลงทะเบียน → ไม่สร้างทะเบียนใหม่
+        const original = store.currentPatientData;
+        const hasPatientDataChanged =
+            !original ||
+            trimmedFirstName !== (original.first_name || "") ||
+            trimmedLastName !== (original.last_name || "") ||
+            trimmedPhone !== (original.phone_number || "");
+
+        if (hasPatientDataChanged) {
+            if (isRegisteredPatient.value) {
+                const { error: patientError } = await updatePatientData(
+                    patientId.value,
+                    {
+                        first_name: trimmedFirstName,
+                        last_name: trimmedLastName,
+                        phone_number: trimmedPhone,
+                    },
+                );
+                if (patientError) throw patientError;
+            }
+
+            const { error: bookingDataError } =
+                await updateBookingPatientData(patientId.value, {
+                    first_name: trimmedFirstName,
+                    last_name: trimmedLastName,
+                    phone_number: trimmedPhone,
+                });
+            if (bookingDataError) throw bookingDataError;
         }
 
         const bookingInfo: BookingInfo = {
@@ -109,9 +129,9 @@ async function handleSubmit(event: Event) {
             time: store.selectedTime,
             therapist: store.selectedTherapist,
             patientId: patientId.value,
-            patientFirstName: patientFirstName.value,
-            patientLastName: patientLastName.value,
-            patientPhone: patientPhone.value,
+            patientFirstName: trimmedFirstName,
+            patientLastName: trimmedLastName,
+            patientPhone: trimmedPhone,
         };
 
         const { data: res, error } = await processBooking(bookingInfo);
@@ -147,46 +167,77 @@ async function handleSubmit(event: Event) {
                 });
             }
 
+            // A booking has just been completed, so do not stay in next-patient mode.
+            store.awaitingNextPatient = false;
+
+            // Keep the first patient's data up to date (important for new patients).
+            if (store.bookedInFlow === 0) {
+                store.updatePrimaryPatient({
+                    patient_id: patientId.value,
+                    first_name: trimmedFirstName,
+                    last_name: trimmedLastName,
+                    phone_number: trimmedPhone,
+                });
+            }
+
+            store.recordCompletedBooking({
+                booking_id: `${Date.now()}-${patientId.value}`,
+                booking_date: bookingInfo.date,
+                booking_time: bookingInfo.time,
+                therapist_name: bookingInfo.therapist,
+                patient_id: bookingInfo.patientId,
+                patient_first_name: bookingInfo.patientFirstName,
+                patient_last_name: bookingInfo.patientLastName,
+                patient_phone: bookingInfo.patientPhone,
+                created_at: new Date().toISOString(),
+            });
+
             // Multi-booking flow:
             if (store.remainingToBook > 1) {
                 // decrement remaining count in store
                 store.decrementRemainingToBook();
 
                 if (store.remainingToBook > 0) {
-                    // Inform user they should select time for the next person
+                    // After one person is booked, ask for the next person's ID card
+                    // before selecting a time slot for them.
                     await Swal.fire({
                         icon: "info",
-                        title: "เลือกช่วงเวลาก่อนกรอกข้อมูลผู้ที่ถัดไป",
-                        html: `คงเหลืออีก <strong>${store.remainingToBook}</strong> คน<br>กรุณาเลือกช่วงเวลา/ผู้ให้บริการสำหรับคนถัดไป`,
-                        timer: 1800,
+                        title: "กรอกเลขบัตรของผู้เข้ารับบริการคนถัดไป",
+                        html: `คงเหลืออีก <strong>${store.remainingToBook}</strong> คน<br>ระบบจะพากลับไปยังหน้าค้นหาผู้ป่วยเพื่อระบุตัวตนของคนถัดไป`,
+                        timer: 2000,
                         showConfirmButton: false,
                     });
 
-                    // Clear current patient data so the next booking starts fresh
+                    // Clear current patient data so the next person can be identified
                     store.currentPatientData = null;
+                    store.selectedTime = "";
+                    store.selectedTherapist = "";
+                    store.awaitingNextPatient = true;
 
-                    // Navigate the user to the slots page (same selectedDate preserved) so they can pick time/therapist for the next person
-                    // selectedDate remains the same; selectedTime/selectedTherapist will be set when they pick a slot
-                    store.navigateTo("slots");
+                    // Keep selectedDate and filters. Go back to the ID search step first.
+                    store.navigateTo("booking-start");
 
-                    // stop further navigation in this flow (user will return to booking-form after choosing a slot)
+                    // Stop here; after the next person is chosen the flow continues to slots.
                     return;
                 } else {
-                    // Completed remaining bookings → return to calendar and keep filters/month
+                    // Completed all people → return to the calendar with the original patient
                     try {
                         store.currentDate = new Date(store.selectedDate);
                     } catch (e) {
                         // ignore invalid date parsing
                     }
+                    store.restorePrimaryPatient();
                     store.navigateTo("calendar");
                 }
             } else {
-                // Single booking → return to calendar (preserve filters and month)
+                // Single/final booking → return to calendar with the original patient,
+                // preserving filters and the selected month.
                 try {
                     store.currentDate = new Date(store.selectedDate);
                 } catch (e) {
                     // ignore
                 }
+                store.restorePrimaryPatient();
                 store.navigateTo("calendar");
             }
         } else {
@@ -259,7 +310,6 @@ async function handleSubmit(event: Event) {
                     v-model="patientFirstName"
                     type="text"
                     required
-                    :readonly="isRegisteredPatient"
                     :disabled="isSubmitting"
                 />
             </div>
@@ -272,7 +322,6 @@ async function handleSubmit(event: Event) {
                     v-model="patientLastName"
                     type="text"
                     required
-                    :readonly="isRegisteredPatient"
                     :disabled="isSubmitting"
                 />
             </div>
@@ -288,10 +337,15 @@ async function handleSubmit(event: Event) {
                     pattern="[0-9]{9,10}"
                     inputmode="tel"
                     maxlength="10"
-                    :readonly="isRegisteredPatient"
                     :disabled="isSubmitting"
                 />
             </div>
+
+            <p v-if="isRegisteredPatient" class="patient-data-note">
+                <i class="fa-solid fa-circle-info"></i>
+                แก้ไขข้อมูลได้ เมื่อยืนยันการจอง ระบบจะอัปเดตทะเบียนผู้ป่วย
+                และรายการจองเดิมให้ตรงกับข้อมูลล่าสุด
+            </p>
 
             <!-- PDPA Consent -->
             <div class="pdpa-consent-container">

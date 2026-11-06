@@ -2,8 +2,9 @@
 import { ref, computed, onMounted, watch } from "vue";
 import Swal from "sweetalert2";
 import { useAppStore } from "@/stores/appStore";
-import { getFilterOptions, getCalendarData } from "@/services/api";
+import { getFilterOptions, getCalendarData, findMyBookings } from "@/services/api";
 import { formatThaiMonthYear } from "@/utils/dateUtils";
+import { createPrintAllSlip } from "@/utils/printUtils";
 import type { FilterOptions, CalendarData, Filters } from "@/types";
 
 const store = useAppStore();
@@ -18,6 +19,9 @@ const filterOptions = ref<FilterOptions>({
 });
 const calendarData = ref<CalendarData>({});
 const calendarLoading = ref(false);
+const showPrintPicker = ref(false);
+const selectedPrintPatientId = ref("");
+const isPrintLoading = ref(false);
 
 // ─── Filter State ─────────────────────────────────────────────────────
 const selectedPeople = ref("1");
@@ -89,6 +93,38 @@ const peopleOptions = computed(() => {
     return options;
 });
 
+type SessionPatient = {
+    patient_id: string;
+    name: string;
+    count: number;
+};
+
+const sessionPatients = computed<SessionPatient[]>(() => {
+    const patients = new Map<string, SessionPatient>();
+
+    for (const booking of store.completedBookings) {
+        const existing = patients.get(booking.patient_id);
+        if (existing) {
+            existing.count += 1;
+            continue;
+        }
+
+        const name =
+            `${booking.patient_first_name} ${booking.patient_last_name}`.trim();
+        patients.set(booking.patient_id, {
+            patient_id: booking.patient_id,
+            name: name || booking.patient_id,
+            count: 1,
+        });
+    }
+
+    return Array.from(patients.values());
+});
+
+const sessionPatientNames = computed(() =>
+    sessionPatients.value.map((patient) => patient.name).join(", "),
+);
+
 // ─── Watchers ─────────────────────────────────────────────────────────
 watch(selectedPeople, (newVal) => {
     if (parseInt(newVal) > 1) {
@@ -130,6 +166,17 @@ async function updateCalendarView() {
     };
     // Sync filters to store
     store.currentFilters = filters;
+
+    // Keep the remaining count in sync with the currently selected filters.
+    // Example: 2 people selected and 1 person already booked → 1 remaining.
+    const selectedPeopleCount = parseInt(selectedPeople.value || "1", 10);
+    const totalPeople =
+        isNaN(selectedPeopleCount) || selectedPeopleCount < 1
+            ? 1
+            : selectedPeopleCount;
+    store.setRemainingToBook(
+        Math.max(1, totalPeople - store.bookedInFlow),
+    );
 
     try {
         const { data: response, error } = await getCalendarData(
@@ -201,11 +248,104 @@ function onDateClick(dateStr: string, status: string) {
     store.selectDate(dateStr);
 }
 
+function openPrintPicker() {
+    const patients = sessionPatients.value;
+    if (patients.length === 0) return;
+
+    if (patients.length === 1) {
+        void printCombinedSlip(patients[0].patient_id);
+        return;
+    }
+
+    selectedPrintPatientId.value = patients[0].patient_id;
+    showPrintPicker.value = true;
+}
+
+async function printCombinedSlip(patientId: string) {
+    if (!patientId || isPrintLoading.value) return;
+
+    isPrintLoading.value = true;
+    try {
+        const { data, error } = await findMyBookings(patientId);
+        if (error) throw error;
+
+        const bookings = data ?? [];
+        if (bookings.length === 0) {
+            await Swal.fire(
+                "ไม่พบรายการนัดหมาย",
+                "ไม่พบรายการนัดหมายที่ยังมาไม่ถึงสำหรับผู้ป่วยรายนี้",
+                "warning",
+            );
+            return;
+        }
+
+        createPrintAllSlip(bookings);
+        showPrintPicker.value = false;
+    } catch (err) {
+        const e = err as Error;
+        Swal.fire(
+            "เกิดข้อผิดพลาด",
+            `ระบบขัดข้อง: ${e.message || ""}`,
+            "error",
+        );
+    } finally {
+        isPrintLoading.value = false;
+    }
+}
+
+function confirmPrintSelected() {
+    void printCombinedSlip(selectedPrintPatientId.value);
+}
+
+/**
+ * คืนค่าตัวกรองที่เคยเลือกไว้ (จำนวนคน / ผู้ให้บริการ / ช่วงเวลา)
+ * เพื่อให้หลังจากจองเสร็จและกลับมาที่ปฏิทิน เงื่อนไขเดิมยังอยู่ครบ
+ */
+function restoreSavedFilters() {
+    const saved = store.currentFilters;
+    if (!saved) return;
+
+    selectedPeople.value = String(saved.people ?? "1");
+    selectedTherapist.value =
+        typeof saved.therapist === "string" ? saved.therapist : "";
+    selectedTimeSlot.value =
+        typeof saved.timeSlot === "string" ? saved.timeSlot : "";
+}
+
+/** ตรวจสอบว่าค่าที่คืนมายังใช้ได้กับตัวเลือกปัจจุบัน */
+function normalizeRestoredFilters() {
+    const maxPeople = Math.max(1, filterOptions.value.maxPeople);
+    const people = parseInt(selectedPeople.value || "1", 10);
+    if (isNaN(people) || people < 1) {
+        selectedPeople.value = "1";
+    } else if (people > maxPeople) {
+        selectedPeople.value = String(maxPeople);
+    }
+
+    if (
+        selectedTherapist.value &&
+        !filterOptions.value.therapists.includes(selectedTherapist.value)
+    ) {
+        selectedTherapist.value = "";
+    }
+
+    const slots = selectedTherapist.value
+        ? (filterOptions.value.therapistTimeMap[selectedTherapist.value] ??
+          filterOptions.value.timeSlots)
+        : filterOptions.value.timeSlots;
+
+    if (selectedTimeSlot.value && !slots.includes(selectedTimeSlot.value)) {
+        selectedTimeSlot.value = "";
+    }
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────
 onMounted(async () => {
     isLoading.value = true;
     try {
         await loadFilterOptions();
+        restoreSavedFilters();
+        normalizeRestoredFilters();
         await updateCalendarView();
     } catch (err) {
         const e = err as Error;
@@ -239,6 +379,51 @@ onMounted(async () => {
                     {{ store.currentPatientData.patient_id }}
                 </template>
             </p>
+        </div>
+
+        <!-- Completed bookings in this session -->
+        <div
+            v-if="store.completedBookings.length > 0"
+            class="booking-summary"
+            style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+            "
+        >
+            <div>
+                <p class="summary-item" style="margin: 0">
+                    <i
+                        class="fa-solid fa-circle-check"
+                        style="color: var(--status-green)"
+                    ></i>
+                    <strong>จองสำเร็จแล้ว {{ store.completedBookings.length }} รายการ</strong>
+                </p>
+                <p
+                    class="summary-item"
+                    style="margin: 0.35rem 0 0; font-size: 0.9em; overflow-wrap: anywhere"
+                >
+                    <i class="fa-solid fa-id-card"></i>
+                    <strong>ผู้ป่วยที่จอง:</strong>
+                    {{ sessionPatientNames }}
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn"
+                :disabled="isPrintLoading"
+                @click="openPrintPicker"
+            >
+                <i
+                    v-if="isPrintLoading"
+                    class="fas fa-spinner fa-spin"
+                ></i>
+                <i v-else class="fa-solid fa-print"></i>
+                พิมพ์ใบนัดรวม ({{ sessionPatients.length }})
+            </button>
         </div>
 
         <!-- Loading overlay for initial load -->
@@ -427,5 +612,90 @@ onMounted(async () => {
                 <i class="fa-solid fa-home"></i> กลับหน้าหลัก
             </button>
         </div>
+
+        <!-- Print picker: choose which patient's combined slip to print -->
+        <Teleport to="body">
+            <div
+                v-if="showPrintPicker"
+                class="modal-overlay"
+                @click.self="showPrintPicker = false"
+            >
+                <div
+                    class="modal-content"
+                    style="max-width: 560px"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="print-picker-title"
+                >
+                    <div class="modal-header">
+                        <h2 id="print-picker-title">
+                            <i class="fa-solid fa-print"></i>
+                            เลือกผู้ป่วยที่ต้องการพิมพ์
+                        </h2>
+                        <button
+                            type="button"
+                            class="modal-close-btn"
+                            aria-label="ปิด"
+                            @click="showPrintPicker = false"
+                        >
+                            &times;
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p>
+                            พิมพ์ใบนัดรวมของผู้ป่วยแต่ละคน
+                            โดยระบบจะดึงรายการนัดหมายที่ยังมาไม่ถึงทั้งหมดของไอดีนั้น
+                        </p>
+
+                        <div class="print-patient-list">
+                            <label
+                                v-for="patient in sessionPatients"
+                                :key="patient.patient_id"
+                                class="print-patient-option"
+                            >
+                                <input
+                                    v-model="selectedPrintPatientId"
+                                    type="radio"
+                                    name="print-patient"
+                                    :value="patient.patient_id"
+                                />
+                                <span>
+                                    <strong>{{ patient.name }}</strong>
+                                    <small>
+                                        เลขบัตร {{ patient.patient_id }}
+                                        · จองในรอบนี้ {{ patient.count }} รายการ
+                                    </small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="btn-action-group" style="margin-top: 1.5rem">
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                :disabled="isPrintLoading"
+                                @click="showPrintPicker = false"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                :disabled="!selectedPrintPatientId || isPrintLoading"
+                                @click="confirmPrintSelected"
+                            >
+                                <i
+                                    v-if="isPrintLoading"
+                                    class="fas fa-spinner fa-spin"
+                                ></i>
+                                <i v-else class="fa-solid fa-print"></i>
+                                พิมพ์ใบนัดรวม
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>

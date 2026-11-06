@@ -24,7 +24,10 @@ onMounted(() => {
 
 <template>
   <div id="app-container">
-    <AppHeader :is-manager-logged-in="store.isManagerLoggedIn" />
+    <AppHeader
+      :is-manager-logged-in="store.isManagerLoggedIn"
+      :user-name="store.currentUser?.full_name"
+    />
 
     <main id="app-content">
       <Transition name="fade" mode="out-in">

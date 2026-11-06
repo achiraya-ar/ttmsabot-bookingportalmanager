@@ -18,21 +18,77 @@ import type {
 } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────────
-//  Auth
+//  Schedule resolution (effective versions)
 // ─────────────────────────────────────────────────────────────────────
 
-export async function getManagerPassword(): Promise<ApiResult<{ setting_value: string }>> {
-  try {
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('setting_value')
-      .eq('setting_name', 'login_password')
-      .single()
-    if (error) throw error
-    return { data, error: null }
-  } catch (e) {
-    return { data: null, error: e as Error }
-  }
+interface ScheduleVersionRow {
+  id: number
+  therapist_name: string
+  day_of_week: number
+  time_slots: string[] | null
+  visibility: string | null
+  slot_visibility: Record<string, string> | null
+  effective_from: string
+}
+
+interface EffectiveSchedule {
+  therapist_name: string
+  time_slots: string[]
+  visibility: string
+}
+
+function isMissingTableError(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === '42P01'
+}
+
+function isSlotPublic(row: ScheduleVersionRow, time: string): boolean {
+  const slotVisibility = row.slot_visibility?.[time]
+  if (slotVisibility === 'public') return true
+  if (slotVisibility === 'private') return false
+  return row.visibility === 'public'
+}
+
+/**
+ * เลือกเวอร์ชันล่าสุดของแต่ละพนักงานสำหรับวันที่ที่ต้องการ
+ * ถ้าวันนั้นยังไม่มีเวอร์ชัน จะไม่แสดงตารางของพนักงานคนนั้น
+ */
+function resolveEffectiveSchedules(
+  dateString: string,
+  dayOfWeek: number,
+  versionRows: ScheduleVersionRow[],
+  isManagerMode: boolean,
+): EffectiveSchedule[] {
+  const effective = new Map<string, EffectiveSchedule & { effective_from: string; id: number }>()
+
+  versionRows
+    .filter((row) => row.day_of_week === dayOfWeek && row.effective_from <= dateString)
+    .sort((a, b) => a.effective_from.localeCompare(b.effective_from) || a.id - b.id)
+    .forEach((row) => {
+      const name = row.therapist_name.trim()
+      const current = effective.get(name)
+      if (
+        !current ||
+        row.effective_from > current.effective_from ||
+        (row.effective_from === current.effective_from && row.id > current.id)
+      ) {
+        const slots = (row.time_slots ?? []).filter(
+          (time) => isManagerMode || isSlotPublic(row, time),
+        )
+        effective.set(name, {
+          therapist_name: name,
+          time_slots: slots,
+          visibility: row.visibility ?? 'public',
+          effective_from: row.effective_from,
+          id: row.id,
+        })
+      }
+    })
+
+  return [...effective.values()].map((row) => ({
+    therapist_name: row.therapist_name,
+    time_slots: row.time_slots,
+    visibility: row.visibility,
+  }))
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -79,6 +135,30 @@ export async function updatePatientData(
   }
 }
 
+/**
+ * อัปเดตข้อมูลผู้ป่วยในรายการจองทั้งหมด (รวมถึงรายการที่จองไว้ก่อนหน้า)
+ * เพื่อให้ข้อมูลล่าสุด เช่น เบอร์โทรศัพท์ ถูกแสดงตรงกันทุกที่
+ */
+export async function updateBookingPatientData(
+  patientId: string,
+  updates: Pick<Patient, 'first_name' | 'last_name' | 'phone_number'>,
+): Promise<ApiResult<null>> {
+  try {
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        patient_first_name: updates.first_name,
+        patient_last_name: updates.last_name,
+        patient_phone: updates.phone_number,
+      })
+      .eq('patient_id', patientId.trim())
+    if (error) throw error
+    return { data: null, error: null }
+  } catch (e) {
+    return { data: null, error: e as Error }
+  }
+}
+
 export async function deletePatientData(patientId: string): Promise<ApiResult<null>> {
   try {
     const { error } = await supabase
@@ -98,40 +178,47 @@ export async function deletePatientData(patientId: string): Promise<ApiResult<nu
 
 export async function getFilterOptions(isManagerMode = true): Promise<ApiResult<FilterOptions>> {
   try {
-    let query = supabase
-      .from('schedules')
-      .select('therapist_name, time_slots, visibility')
+    const { data: versionsData, error: versionsError } = await supabase
+      .from('schedule_versions')
+      .select(
+        'id, therapist_name, day_of_week, time_slots, visibility, slot_visibility, effective_from',
+      )
 
-    if (!isManagerMode) {
-      query = query.eq('visibility', 'public')
+    if (versionsError && !isMissingTableError(versionsError)) {
+      throw versionsError
     }
 
-    const { data: schedulesData, error } = await query
-    if (error) throw error
-
-    const uniqueTherapists = [
-      ...new Set(schedulesData.map((row: { therapist_name: string }) => row.therapist_name.trim())),
-    ].sort() as string[]
-
-    const maxPeople = uniqueTherapists.length
+    const versionRows = (versionsData ?? []) as ScheduleVersionRow[]
+    const uniqueTherapistSet = new Set<string>()
     const allTimeSlots = new Set<string>()
     const therapistTimeMap: Record<string, string[]> = {}
 
-    schedulesData.forEach((row: { therapist_name: string; time_slots: string[] }) => {
-      if (row.time_slots && row.time_slots.length > 0) {
-        const therapist = row.therapist_name.trim()
-        if (!therapistTimeMap[therapist]) {
-          therapistTimeMap[therapist] = []
-        }
-        row.time_slots.forEach((slot: string) => {
-          const trimmedSlot = slot.trim()
-          if (!therapistTimeMap[therapist].includes(trimmedSlot)) {
-            therapistTimeMap[therapist].push(trimmedSlot)
-          }
-          allTimeSlots.add(trimmedSlot)
-        })
+    versionRows.forEach((row) => {
+      const therapist = row.therapist_name.trim()
+      const slots = (row.time_slots ?? [])
+        .map((slot) => slot.trim())
+        .filter(
+          (slot) => slot && (isManagerMode || isSlotPublic(row, slot)),
+        )
+
+      if (isManagerMode || slots.length > 0) {
+        uniqueTherapistSet.add(therapist)
       }
+      if (slots.length === 0) return
+
+      if (!therapistTimeMap[therapist]) {
+        therapistTimeMap[therapist] = []
+      }
+      slots.forEach((slot) => {
+        if (!therapistTimeMap[therapist].includes(slot)) {
+          therapistTimeMap[therapist].push(slot)
+        }
+        allTimeSlots.add(slot)
+      })
     })
+
+    const uniqueTherapists = [...uniqueTherapistSet].sort() as string[]
+    const maxPeople = uniqueTherapists.length
 
     for (const therapist in therapistTimeMap) {
       therapistTimeMap[therapist] = therapistTimeMap[therapist].sort((a, b) =>
@@ -178,7 +265,7 @@ export async function getCalendarData(
 
     const [
       { data: holidaysData, error: e1 },
-      { data: schedulesData, error: e2 },
+      { data: versionsData, error: e2 },
       { data: bookingsData, error: e3 },
       { data: blockagesData, error: e4 },
     ] = await Promise.all([
@@ -188,8 +275,11 @@ export async function getCalendarData(
         .gte('holiday_date', firstDayOfMonth)
         .lte('holiday_date', lastDayOfMonth),
       supabase
-        .from('schedules')
-        .select('therapist_name, day_of_week, time_slots, visibility'),
+        .from('schedule_versions')
+        .select(
+          'id, therapist_name, day_of_week, time_slots, visibility, slot_visibility, effective_from',
+        )
+        .lte('effective_from', lastDayOfMonth),
       supabase
         .from('bookings')
         .select('booking_date, booking_time, therapist_name')
@@ -202,8 +292,9 @@ export async function getCalendarData(
         .lte('block_date', lastDayOfMonth),
     ])
 
-    const fetchError = e1 || e2 || e3 || e4
+    const fetchError = e1 || e3 || e4
     if (fetchError) throw fetchError
+    if (e2 && !isMissingTableError(e2)) throw e2
 
     const todayString = formatDateToYYYYMMDD(new Date())
     const maxBookingDate = new Date()
@@ -234,16 +325,15 @@ export async function getCalendarData(
         continue
       }
 
-      const todaysSchedules = (schedulesData ?? []).filter((s: {
-        day_of_week: number
-        visibility: string
-        therapist_name: string
-      }) => {
-        if (s.day_of_week != dayOfWeek) return false
-        if (!isManagerMode && s.visibility !== 'public') return false
-        if (filters.therapist && s.therapist_name.trim() !== filters.therapist) return false
-        return true
-      })
+      const todaysSchedules = resolveEffectiveSchedules(
+        dateString,
+        dayOfWeek,
+        (versionsData ?? []) as ScheduleVersionRow[],
+        isManagerMode,
+      ).filter(
+        (schedule) =>
+          !filters.therapist || schedule.therapist_name === filters.therapist,
+      )
 
       if (todaysSchedules.length < peopleToFind) {
         calendarStatus[dateString] = 'FULL'
@@ -361,7 +451,7 @@ export async function getAvailableSlots(
     const [
       { data: bookingsOnDate, error: e1 },
       { data: blockedSlotsForDate, error: e2 },
-      { data: allSchedules, error: e3 },
+      { data: allVersions, error: e3 },
     ] = await Promise.all([
       supabase
         .from('bookings')
@@ -372,31 +462,47 @@ export async function getAvailableSlots(
         .select('block_time, therapist_name')
         .eq('block_date', dateString),
       supabase
-        .from('schedules')
-        .select('therapist_name, day_of_week, time_slots, visibility'),
+        .from('schedule_versions')
+        .select(
+          'id, therapist_name, day_of_week, time_slots, visibility, slot_visibility, effective_from',
+        )
+        .lte('effective_from', dateString),
     ])
 
-    const fetchError = e1 || e2 || e3
+    const fetchError = e1 || e2
     if (fetchError) throw fetchError
+    if (e3 && !isMissingTableError(e3)) throw e3
 
-    const todaysSchedules = (allSchedules ?? []).filter((s: {
-      day_of_week: number
-      visibility: string
-    }) => {
-      if (s.day_of_week != dayOfWeek) return false
-      if (!isManagerMode && s.visibility !== 'public') return false
-      return true
-    })
+    const todaysSchedules = resolveEffectiveSchedules(
+      dateString,
+      dayOfWeek,
+      (allVersions ?? []) as ScheduleVersionRow[],
+      isManagerMode,
+    )
 
-    if (todaysSchedules.length === 0) {
+    if (
+      todaysSchedules.length === 0 &&
+      (bookingsOnDate ?? []).length === 0 &&
+      (blockedSlotsForDate ?? []).length === 0
+    ) {
       return { data: { therapists: [], slots: [] }, error: null }
     }
 
     let therapistsToday = [
-      ...new Set(
-        todaysSchedules.map((s: { therapist_name: string }) => s.therapist_name.trim()),
-      ),
-    ].sort() as string[]
+      ...new Set([
+        ...todaysSchedules
+          .filter((schedule) => schedule.time_slots.length > 0)
+          .map((schedule) => schedule.therapist_name.trim()),
+        ...(bookingsOnDate ?? []).map((b: { therapist_name: string }) =>
+          b.therapist_name.trim(),
+        ),
+        ...(blockedSlotsForDate ?? []).map((bl: { therapist_name: string }) =>
+          bl.therapist_name.trim(),
+        ),
+      ]),
+    ]
+      .filter(Boolean)
+      .sort() as string[]
 
     if (filters.therapist) {
       therapistsToday = therapistsToday.filter((t) => t === filters.therapist)
@@ -406,6 +512,13 @@ export async function getAvailableSlots(
     todaysSchedules.forEach((s: { time_slots: string[] }) => {
       if (s.time_slots) s.time_slots.forEach((slot: string) => allSlotsToday.add(slot.trim()))
     })
+    // แสดงเวลาที่มีการจอง/ล็อกคิวเดิมอยู่ด้วย แม้ช่วงเวลานั้นจะถูกเอาออกจากตารางเวอร์ชันใหม่แล้ว
+    ;(bookingsOnDate ?? []).forEach(
+      (b: { booking_time: string }) => allSlotsToday.add(b.booking_time.slice(0, 5)),
+    )
+    ;(blockedSlotsForDate ?? []).forEach(
+      (bl: { block_time: string }) => allSlotsToday.add(bl.block_time.slice(0, 5)),
+    )
 
     let sortedSlots = Array.from(allSlotsToday).sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true }),
@@ -430,16 +543,19 @@ export async function getAvailableSlots(
           (therapistSchedule as { time_slots: string[] }).time_slots &&
           (therapistSchedule as { time_slots: string[] }).time_slots.includes(time)
 
-        if (hasSlot) {
-          const isBooked = (bookingsOnDate ?? []).some(
-            (b: { booking_time: string; therapist_name: string }) =>
-              b.booking_time.slice(0, 5) === time && b.therapist_name.trim() === therapistName,
-          )
-          const isBlocked = (blockedSlotsForDate ?? []).some(
-            (bl: { block_time: string; therapist_name: string }) =>
-              bl.block_time.slice(0, 5) === time && bl.therapist_name.trim() === therapistName,
-          )
-          slotInfo.availability[therapistName] = isBooked || isBlocked ? 'FULL' : 'AVAILABLE'
+        const isBooked = (bookingsOnDate ?? []).some(
+          (b: { booking_time: string; therapist_name: string }) =>
+            b.booking_time.slice(0, 5) === time && b.therapist_name.trim() === therapistName,
+        )
+        const isBlocked = (blockedSlotsForDate ?? []).some(
+          (bl: { block_time: string; therapist_name: string }) =>
+            bl.block_time.slice(0, 5) === time && bl.therapist_name.trim() === therapistName,
+        )
+
+        if (isBooked || isBlocked) {
+          slotInfo.availability[therapistName] = 'FULL'
+        } else if (hasSlot) {
+          slotInfo.availability[therapistName] = 'AVAILABLE'
         } else {
           slotInfo.availability[therapistName] = 'NOT_AVAILABLE'
         }

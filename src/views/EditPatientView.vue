@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import Swal from 'sweetalert2'
 import { useAppStore } from '@/stores/appStore'
-import { checkPatientRegistration, updatePatientData, deletePatientData } from '@/services/api'
+import { checkPatientRegistration, updatePatientData, updateBookingPatientData, deletePatientData } from '@/services/api'
 import { validateThaiId } from '@/utils/validators'
 import type { Patient } from '@/types'
 
@@ -81,22 +81,29 @@ async function handleUpdate(event: Event) {
   })
 
   try {
-    const { error } = await updatePatientData(foundPatient.value.patient_id, {
+    const updates = {
       first_name: editFirstName.value.trim(),
       last_name: editLastName.value.trim(),
       phone_number: editPhone.value.trim(),
-    })
+    }
+
+    const { error } = await updatePatientData(foundPatient.value.patient_id, updates)
 
     if (error) throw error
 
-    await Swal.fire('สำเร็จ', 'อัปเดตข้อมูลผู้ป่วยเรียบร้อยแล้ว', 'success')
+    // อัปเดตข้อมูลในรายการจองเดิมทั้งหมดให้ตรงกับข้อมูลล่าสุด
+    const { error: bookingError } = await updateBookingPatientData(
+      foundPatient.value.patient_id,
+      updates,
+    )
+    if (bookingError) throw bookingError
+
+    await Swal.fire('สำเร็จ', 'อัปเดตข้อมูลผู้ป่วยและรายการจองเรียบร้อยแล้ว', 'success')
 
     // Update local state
     foundPatient.value = {
       ...foundPatient.value,
-      first_name: editFirstName.value.trim(),
-      last_name: editLastName.value.trim(),
-      phone_number: editPhone.value.trim(),
+      ...updates,
     }
   } catch (err) {
     const e = err as Error
