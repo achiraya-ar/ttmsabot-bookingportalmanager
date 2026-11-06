@@ -58,7 +58,7 @@ async function handleSubmit(event: Event) {
       // ไม่พบผู้ป่วยในระบบ → ถามว่าจะดำเนินการต่อหรือไม่
       const result = await Swal.fire({
         title: 'ไม่พบผู้ป่วยในระบบ',
-        html: `ไม่พบข้อมูลสำหรับเลขบัตรประชาชน: <strong>${patientId.value}</strong><br>คุณต้องการดำเนินการจองคิวต่อสำหรับผู้ป่วยรายนี้หรือไม่?<br><small>ระบบจะบันทึกข้อมูลเฉพาะในรายการจอง และไม่สร้างทะเบียนผู้ป่วยใหม่ให้อัตโนมัติ</small>`,
+        html: `ไม่พบข้อมูลสำหรับเลขบัตรประชาชน: <strong>${patientId.value}</strong><br>คุณต้องการดำเนินการจองคิวต่อสำหรับผู้ป่วยรายนี้หรือไม่?<br><small>ระบบจะสร้างทะเบียนผู้ป่วยใหม่ให้อัตโนมัติ โดยยังไม่เปิดให้ผู้ป่วยจองคิวเองผ่านหน้าเว็บ (สามารถเปิดได้ภายหลังในหน้าแก้ไขข้อมูลผู้ป่วย)</small>`,
         icon: 'question',
         showDenyButton: true,
         confirmButtonText: '<i class="fa-solid fa-calendar-plus"></i> ดำเนินการจองต่อ',
@@ -72,6 +72,7 @@ async function handleSubmit(event: Event) {
           first_name: '',
           last_name: '',
           phone_number: '',
+          can_self_book: false,
         }
         goToBooking(newPatient)
       } else {

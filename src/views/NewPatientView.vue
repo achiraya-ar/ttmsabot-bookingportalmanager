@@ -4,6 +4,7 @@ import Swal from 'sweetalert2'
 import { useAppStore } from '@/stores/appStore'
 import { checkPatientRegistration, registerNewPatient } from '@/services/api'
 import { validateThaiId } from '@/utils/validators'
+import SelfBookToggle from '@/components/SelfBookToggle.vue'
 
 const store = useAppStore()
 
@@ -11,6 +12,7 @@ const patientId = ref('')
 const patientFirstName = ref('')
 const patientLastName = ref('')
 const patientPhone = ref('')
+const canSelfBook = ref(false)
 const isSubmitting = ref(false)
 
 async function handleSubmit(event: Event) {
@@ -41,6 +43,7 @@ async function handleSubmit(event: Event) {
         <p><strong>เลขบัตร:</strong> ${patientId.value}</p>
         <p><strong>ชื่อ-สกุล:</strong> ${patientFirstName.value} ${patientLastName.value}</p>
         <p><strong>เบอร์โทร:</strong> ${patientPhone.value}</p>
+        <p><strong>จองคิวเองผ่านหน้าเว็บ:</strong> ${canSelfBook.value ? 'อนุญาต' : 'ไม่อนุญาต'}</p>
       </div>
       <br>
       <p>ข้อมูลถูกต้องและต้องการบันทึกใช่หรือไม่?</p>
@@ -65,6 +68,7 @@ async function handleSubmit(event: Event) {
       first_name: patientFirstName.value.trim(),
       last_name: patientLastName.value.trim(),
       phone_number: patientPhone.value.trim(),
+      can_self_book: canSelfBook.value,
     })
 
     if (error) throw error
@@ -144,6 +148,11 @@ async function handleSubmit(event: Event) {
             placeholder="0xxxxxxxxx"
             :disabled="isSubmitting"
           />
+        </div>
+
+        <!-- Self-booking permission -->
+        <div class="form-group">
+          <SelfBookToggle v-model="canSelfBook" :disabled="isSubmitting" />
         </div>
 
         <!-- Action Buttons -->

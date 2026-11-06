@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import Swal from "sweetalert2";
 import { useAppStore } from "@/stores/appStore";
-import { processBooking, updatePatientData, updateBookingPatientData } from "@/services/api";
+import { processBooking, registerNewPatient, updatePatientData, updateBookingPatientData } from "@/services/api";
 import { formatThaiDate } from "@/utils/dateUtils";
 import { createPrintSlip } from "@/utils/printUtils";
 import type { BookingInfo } from "@/types";
@@ -91,10 +91,9 @@ async function handleSubmit(event: Event) {
         const trimmedLastName = patientLastName.value.trim();
         const trimmedPhone = patientPhone.value.trim();
 
-        // อัปเดตข้อมูลผู้ป่วยล่าสุดเมื่อมีการแก้ไข:
-        // - ผู้ป่วยที่ลงทะเบียนแล้ว → อัปเดตข้อมูลในทะเบียนผู้ป่วย
-        // - รายการจองเดิมทั้งหมด → อัปเดตชื่อ/เบอร์โทรให้ตรงกับข้อมูลล่าสุด
-        // - ผู้ป่วยที่ยังไม่ลงทะเบียน → ไม่สร้างทะเบียนใหม่
+        // ผู้ป่วยใหม่ที่ยังไม่ลงทะเบียน → ลงทะเบียนให้อัตโนมัติ
+        // โดยยังไม่เปิดให้ผู้ป่วยจองคิวเองผ่านหน้าเว็บ (can_self_book = false)
+        // ผู้ป่วยที่ลงทะเบียนแล้ว → อัปเดตข้อมูลในทะเบียนผู้ป่วยและรายการจองเดิม
         const original = store.currentPatientData;
         const hasPatientDataChanged =
             !original ||
@@ -102,19 +101,28 @@ async function handleSubmit(event: Event) {
             trimmedLastName !== (original.last_name || "") ||
             trimmedPhone !== (original.phone_number || "");
 
-        if (hasPatientDataChanged) {
-            if (isRegisteredPatient.value) {
-                const { error: patientError } = await updatePatientData(
-                    patientId.value,
-                    {
-                        first_name: trimmedFirstName,
-                        last_name: trimmedLastName,
-                        phone_number: trimmedPhone,
-                    },
-                );
-                if (patientError) throw patientError;
-            }
+        if (!isRegisteredPatient.value) {
+            const { error: registerError } = await registerNewPatient({
+                patient_id: patientId.value.trim(),
+                first_name: trimmedFirstName,
+                last_name: trimmedLastName,
+                phone_number: trimmedPhone,
+                can_self_book: false,
+            });
+            if (registerError) throw registerError;
+        } else if (hasPatientDataChanged) {
+            const { error: patientError } = await updatePatientData(
+                patientId.value,
+                {
+                    first_name: trimmedFirstName,
+                    last_name: trimmedLastName,
+                    phone_number: trimmedPhone,
+                },
+            );
+            if (patientError) throw patientError;
+        }
 
+        if (hasPatientDataChanged) {
             const { error: bookingDataError } =
                 await updateBookingPatientData(patientId.value, {
                     first_name: trimmedFirstName,
@@ -177,6 +185,7 @@ async function handleSubmit(event: Event) {
                     first_name: trimmedFirstName,
                     last_name: trimmedLastName,
                     phone_number: trimmedPhone,
+                    can_self_book: store.currentPatientData?.can_self_book ?? false,
                 });
             }
 

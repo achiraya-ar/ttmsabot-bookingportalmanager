@@ -4,6 +4,7 @@ import Swal from 'sweetalert2'
 import { useAppStore } from '@/stores/appStore'
 import { checkPatientRegistration, updatePatientData, updateBookingPatientData, deletePatientData } from '@/services/api'
 import { validateThaiId } from '@/utils/validators'
+import SelfBookToggle from '@/components/SelfBookToggle.vue'
 import type { Patient } from '@/types'
 
 const store = useAppStore()
@@ -19,6 +20,7 @@ const searchError = ref(false)
 const editFirstName = ref('')
 const editLastName = ref('')
 const editPhone = ref('')
+const editCanSelfBook = ref(false)
 
 async function handleSearch(event: Event) {
   event.preventDefault()
@@ -43,6 +45,7 @@ async function handleSearch(event: Event) {
       editFirstName.value = patient.first_name
       editLastName.value = patient.last_name
       editPhone.value = patient.phone_number || ''
+      editCanSelfBook.value = patient.can_self_book ?? false
     }
   } catch (err) {
     const e = err as Error
@@ -85,6 +88,7 @@ async function handleUpdate(event: Event) {
       first_name: editFirstName.value.trim(),
       last_name: editLastName.value.trim(),
       phone_number: editPhone.value.trim(),
+      can_self_book: editCanSelfBook.value,
     }
 
     const { error } = await updatePatientData(foundPatient.value.patient_id, updates)
@@ -148,6 +152,7 @@ async function handleDelete() {
     editFirstName.value = ''
     editLastName.value = ''
     editPhone.value = ''
+    editCanSelfBook.value = false
     searchError.value = false
   } catch (err) {
     const e = err as Error
@@ -264,6 +269,14 @@ async function handleDelete() {
                 pattern="[0-9]{9,10}"
                 inputmode="tel"
                 maxlength="10"
+                :disabled="isSaving || isDeleting"
+              />
+            </div>
+
+            <!-- Self-booking permission -->
+            <div class="form-group">
+              <SelfBookToggle
+                v-model="editCanSelfBook"
                 :disabled="isSaving || isDeleting"
               />
             </div>

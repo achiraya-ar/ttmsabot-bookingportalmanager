@@ -474,6 +474,92 @@ main#app-content {
     background-color: var(--status-disabled-bg);
     cursor: not-allowed;
 }
+.self-book-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--background-secondary);
+}
+.self-book-toggle.is-disabled {
+    opacity: 0.75;
+}
+.self-book-toggle__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+.self-book-toggle__label {
+    font-weight: 600;
+    color: var(--dark-text);
+    line-height: 1.5;
+}
+.self-book-toggle__hint {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--status-gray);
+}
+.self-book-toggle__control {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+.self-book-toggle__state {
+    min-width: 2rem;
+    text-align: right;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--status-gray);
+    transition: color 0.2s ease;
+}
+.self-book-toggle__state.is-on {
+    color: #15803d;
+}
+.self-book-toggle__switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 56px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background-color: #cbd5e1;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+.self-book-toggle__switch.is-on {
+    background-color: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+.self-book-toggle__switch:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.35);
+}
+.self-book-toggle__switch:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+.self-book-toggle__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+.self-book-toggle__switch.is-on .self-book-toggle__thumb {
+    transform: translateX(24px);
+}
 .patient-data-note {
     margin: -0.5rem 0 1rem;
     font-size: 0.85rem;

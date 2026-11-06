@@ -20,6 +20,7 @@ export interface Patient {
   first_name: string
   last_name: string
   phone_number: string
+  can_self_book: boolean
 }
 
 // --- ข้อมูลการจอง ---
